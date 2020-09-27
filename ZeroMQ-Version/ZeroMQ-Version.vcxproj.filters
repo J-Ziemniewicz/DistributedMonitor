@@ -24,12 +24,18 @@
     <ClCompile Include="message_type_converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Monitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Message.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="message_type_converter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Monitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

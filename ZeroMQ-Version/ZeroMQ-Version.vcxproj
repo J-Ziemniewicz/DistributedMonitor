@@ -147,11 +147,13 @@
   <ItemGroup>
     <ClCompile Include="message_type_converter.cpp" />
     <ClCompile Include="Message.cpp" />
+    <ClCompile Include="Monitor.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="message_type_converter.h" />
     <ClInclude Include="Message.h" />
+    <ClInclude Include="Monitor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
