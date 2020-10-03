@@ -66,7 +66,7 @@ void Monitor::_broadcastMessage(MessageType messageType, std::string sharedObjec
 	for (std::vector<int>::iterator it = updatedPeerSet.begin(); it != updatedPeerSet.end(); ++it) { // send the messages to all other peers
 		char* recvBuffer = new char[255];
 		memset(recvBuffer, 0, sizeof(recvBuffer));
-		zmq_send(_otherPeers[*it], static_cast<void*>(&newMessage.serialize()),1000,0);
+		zmq_send(_otherPeers[*it], newMessage.serialize().c_str(),1000,0);
 		std::cout << "Sending message to.. " << std::to_string(*it) << std::endl;
 		zmq_recv(_otherPeers[*it], recvBuffer, sizeof(recvBuffer), 0); //Dummy recv forced by REQ-REP Model
 		std::cout << "Received dummy msg..." << std::endl;
@@ -80,8 +80,8 @@ void Monitor::_receiveMessageThread()
 	std::cout << "Second thread for incomming messages running..." << std::endl;
 	char* recvBuffer = new char[1000];
 	while (1) {
-		memset(recvBuffer, 0, sizeof(recvBuffer));
-		if (zmq_recv(_receiveSocket, recvBuffer, sizeof(recvBuffer), 0) != -1) {
+		memset(recvBuffer, 0, 1000);
+		if (zmq_recv(_receiveSocket, recvBuffer, 1000, 0) != -1) {
 			//Message dummyResponse = Message(0, _port, "", "", MessageType::DUMMY, -1);
 			//zmq_send(_receiveSocket, dummyResponse.serialize().c_str(), sizeof(dummyResponse.serialize().c_str()), 0);
 			
@@ -100,39 +100,39 @@ void Monitor::_parseMessage(Message message)
 {	
 	MessageType recvMessageType = message.getMessageType();
 	_updateLamportClock(true, message.getMessageTimeStamp());
+	std::string sharedObjectId= message.getSharedObjectId();
 	switch (recvMessageType) {
 	case MessageType::REQ: {
-		_insertMessageToReqQueque(message, message.getSharedObjectId());
-		
+		_insertMessageToReqQueque(message, sharedObjectId);
+		//Trzeba dodac porownywanie priorytetow wiadomosci i odsylanie reply
 		break; }
 	case MessageType::RES: {
-		std::string sharedObject = message.getSharedObjectId();
-		if (std::find(_myRequests.begin(), _myRequests.end(), sharedObject) != _myRequests.end()) {
-			if (std::find(_replyMessagess[sharedObject].begin(), _replyMessagess[sharedObject].end(), message.getSenderPort()) == _replyMessagess[sharedObject].end()) {
-				_replyMessagess[sharedObject].push_back(message.getSenderPort());
+		
+		if (std::find(_myRequests.begin(), _myRequests.end(), sharedObjectId) != _myRequests.end()) {
+			if (std::find(_replyMessagess[sharedObjectId].begin(), _replyMessagess[sharedObjectId].end(), message.getSenderPort()) == _replyMessagess[sharedObjectId].end()) {
+				_replyMessagess[sharedObjectId].push_back(message.getSenderPort());
 			}
 		}
 		break; }
 	case MessageType::REMOVE: {
-		std::string sharedObject = message.getSharedObjectId();
+		
 		int recvPort = message.getSenderPort();
-		if (_requestQueue.count(sharedObject) > 0) {
+		if (_requestQueue.count(sharedObjectId) > 0) {
 			for (std::vector<int>::size_type i = 0; i != _requestQueue.size(); i++) {
-				if (_requestQueue[sharedObject][i].getSenderPort() == recvPort) {
-					_requestQueue[sharedObject].erase(_requestQueue[sharedObject].begin() + i);
+				if (_requestQueue[sharedObjectId][i].getSenderPort() == recvPort) {
+					_requestQueue[sharedObjectId].erase(_requestQueue[sharedObjectId].begin() + i);
 				}
 			}
 		}
 		break; }
 	case MessageType::UPDATE:
 	{
-		std::string sharedObjectId = message.getSharedObjectId();
 		_sharedObjectMap[sharedObjectId] = message.getSharedObject();
 		break;
 	}
 	case MessageType::NOTIFY:
-		_sharedObjectWaitingMap[message.getSharedObjectId()] = false;
-		std::string sharedObjectId = message.getSharedObjectId();
+		_sharedObjectWaitingMap[sharedObjectId] = false;
+		std::string sharedObjectId = sharedObjectId;
 		_sharedObjectMap[sharedObjectId] = message.getSharedObject();
 		break;
 	}
