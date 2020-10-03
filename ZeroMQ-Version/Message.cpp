@@ -23,6 +23,7 @@ Message::Message(char* recievedMessage)
 	_sharedObjectId = out[2];
 	_sharedObject = out[3];
 	_messageType = message_type_converter::string_to_message_type(out[4]);
+	_timeStamp = std::stoi(out[5]);
 }
 
 Message::Message(int messageId, int senderPort,std::string sharedObjectId, std::string sharedObject, MessageType messageType, long timeStamp)
@@ -37,7 +38,7 @@ Message::Message(int messageId, int senderPort,std::string sharedObjectId, std::
 
 std::string Message::serialize()
 {
-	return std::to_string(_messageId) + ";" + std::to_string(_senderPort) + ";" + _sharedObjectId + ";" +_sharedObject + ";" + message_type_converter::message_type_to_string(_messageType)+";";
+	return std::to_string(_messageId) + ";" + std::to_string(_senderPort) + ";" + _sharedObjectId + ";" +_sharedObject + ";" + message_type_converter::message_type_to_string(_messageType)+";"+std::to_string(_timeStamp)+";";
 }
 
 std::string Message::print_message()

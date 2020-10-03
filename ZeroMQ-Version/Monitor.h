@@ -39,7 +39,7 @@ private:
 	std::vector<std::string> _myRequests;
 
 	void _insertMessageToReqQueque(Message message, std::string sharedObjectId);
-	bool _compareMessages(Message msg1, Message msg2);
+	static bool _compareMessages(Message msg1, Message msg2);
 	void _updateLamportClock( bool ifMax, long receivedClock);
 	long _getLamportClock();
 	void _broadcastMessage(MessageType messageType,std::string sharedObjectId, std::string sharedObject, std::vector<int> skipPeers);

@@ -1,4 +1,4 @@
-#pragma once;
+#pragma once
 #include "Message.h"
 
 namespace message_type_converter

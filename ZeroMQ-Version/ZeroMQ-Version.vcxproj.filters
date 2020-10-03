@@ -39,4 +39,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="5555.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="5556.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="5557.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
 </Project>
