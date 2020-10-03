@@ -90,13 +90,13 @@ void Monitor::_receiveMessageThread()
 			std::cout << "Error in message receiving..." << std::endl;
 		}
 	}
-	
 }
 
 void Monitor::_parseMessage(Message message)
 {	
 	
 	MessageType recvMessageType = message.getMessageType();
+	_updateLamportClock(true, message.getMessageTimeStamp());
 	switch (recvMessageType) {
 	case MessageType::REQ: {
 		_insertMessageToReqQueque(message, message.getSharedObjectId());
@@ -127,6 +127,8 @@ void Monitor::_parseMessage(Message message)
 	}
 	case MessageType::NOTIFY:
 		_sharedObjectWaitingMap[message.getSharedObjectId()] = false;
+		std::string sharedObjectId = message.getSharedObjectId();
+		_sharedObjectMap[sharedObjectId] = message.getSharedObject();
 	}
 }
 
@@ -214,6 +216,27 @@ void Monitor::update(std::string sharedObjectId, std::string sharedObject) {
 
 void Monitor::release(std::string sharedObjectId)
 {
+	_mtx.lock();
+	auto it = std::find(_myRequests.begin(), _myRequests.end(), sharedObjectId);
+	if (it != _myRequests.end())
+		_myRequests.erase(it);
+	
+	_requestQueue[sharedObjectId].erase(_requestQueue[sharedObjectId].begin()); //usuwanie pierwszego elementu z kolejki REQ do wspoldzielonego obiektu
+	std::vector<int> skipPeers;
+	_updateLamportClock(false, 0);
+	if (_requestQueue[sharedObjectId].size()>0) {
+		int nextPeerInQueue = _requestQueue[sharedObjectId].front().getSenderPort();
+		skipPeers.push_back(nextPeerInQueue);
+		Message replyMessage = Message(0, _port, sharedObjectId, _sharedObjectMap[sharedObjectId], MessageType::RES, _lamportClock);
+		zmq_send(_otherPeers[nextPeerInQueue], replyMessage.serialize().c_str(), sizeof(replyMessage.serialize().c_str()), 0);
+	}
+	// broadcast shared object updated value
+	_broadcastMessage(MessageType::UPDATE, sharedObjectId, _sharedObjectMap[sharedObjectId], skipPeers);
+	_requestQueue[sharedObjectId].clear();
+	_replyMessagess[sharedObjectId].clear();
+	std::cout << "Object " << sharedObjectId << " is released..." << std::endl;
+	_mtx.unlock();
+
 }
 
 void Monitor::wait(std::string sharedObjectId)
