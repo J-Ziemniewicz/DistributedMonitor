@@ -18,6 +18,9 @@ std::string message_type_converter::message_type_to_string(MessageType messageTy
 	else if (messageType == MessageType::TEST) {
 		stringMessageType = "TEST";
 	}
+	else if (messageType == MessageType::UPDATE) {
+		stringMessageType = "UPDATE";
+	}	
 	return stringMessageType;
 }
 
@@ -37,6 +40,9 @@ MessageType message_type_converter::string_to_message_type(std::string stringMes
 	}
 	else if (stringMessageType == "TEST") {
 		return MessageType::TEST;
+	}
+	else if (stringMessageType == "UPDATE") {
+		return MessageType::UPDATE;
 	}
 	return MessageType();
 }
