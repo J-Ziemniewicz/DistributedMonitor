@@ -24,41 +24,30 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	Monitor monitor = Monitor(port);
-
-	char  dumMsg[] = "0;5555;A;[tak];REQ;6";
-	Message msg = Message(dumMsg);
 	
 	std::this_thread::sleep_for(std::chrono::seconds(3));
 	switch (port)
 	{
 	case 5555:
 		monitor.addPeer(5556);
-		monitor.addPeer(5557);
 		monitor.addSharedObject("A", "test");
 		
 		break;
 	case 5556:
 		monitor.addPeer(5555);
-		monitor.addPeer(5557);
-		monitor.addSharedObject("A", "test");
-		break;
-	case 5557:
-		monitor.addPeer(5555);
-		monitor.addPeer(5556);
 		monitor.addSharedObject("A", "test");
 		break;
 	}
 	monitor.startReceivingThread();
 	std::this_thread::sleep_for(std::chrono::seconds(3));
-	//if (port == 5555) {
-		monitor.acquire("A");
-		std::this_thread::sleep_for(std::chrono::seconds(3));
-		monitor.update("A", std::to_string(port));
-		monitor.release("A");
-	//}
-		while (1) {
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-		};
+	monitor.acquire("A");
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	monitor.update("A", std::to_string(port));
+	monitor.release("A");
+	
+	while (1) {
+		
+	};
 	
 	return 0;
 

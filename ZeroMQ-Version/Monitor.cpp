@@ -82,14 +82,12 @@ void Monitor::_receiveMessageThread()
 	while (1) {
 		memset(recvBuffer, 0, 1000);
 		if (zmq_recv(_receiveSocket, recvBuffer, 1000, 0) > -1) {
+			
 			Message dummyResponse = Message(0, _port, "", "", MessageType::DUMMY, -1);
 			zmq_send(_receiveSocket, dummyResponse.serialize().c_str(), 255, 0);
 			
 			_mtx.lock();
 			Message receivedMessage = Message(recvBuffer);
-			//Message dummyResponse = Message(0, _port, "", "", MessageType::DUMMY, -1);
-			//zmq_send(_receiveSocket, dummyResponse.serialize().c_str(), sizeof(dummyResponse.serialize().c_str()), 0);
-			//std::cout << "Received msg from" << message_type_converter::message_type_to_string(receivedMessage.getMessageType()) << std::endl;
 			_parseMessage(receivedMessage);
 			_mtx.unlock();
 		}
@@ -124,7 +122,6 @@ void Monitor::_parseMessage(Message message)
 			_updateLamportClock(false, 0);
 			Message resMsg = Message(0, _port, sharedObjectId, "", MessageType::RES, _lamportClock);
 			zmq_send(_otherPeers[message.getSenderPort()], resMsg.serialize().c_str(), 1000, 0);
-			
 			zmq_recv(_otherPeers[message.getSenderPort()], recvBuffer, 255, 0);
 		}
 		_insertMessageToReqQueque(message, sharedObjectId);
@@ -306,7 +303,7 @@ void Monitor::release(std::string sharedObjectId)
 	}
 	// broadcast shared object updated value
 	_broadcastMessage(MessageType::UPDATE, sharedObjectId, _sharedObjectMap[sharedObjectId], skipPeers);
-	//_requestQueue[sharedObjectId].clear();
+	
 	_replyMessagess[sharedObjectId].clear();
 	std::cout << "Object " << sharedObjectId << " is released..." << std::endl;
 	_mtx.unlock();
