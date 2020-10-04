@@ -11,6 +11,7 @@ public:
 	
 
 	Monitor(int port);
+	void startReceivingThread();
 	~Monitor();
 
 

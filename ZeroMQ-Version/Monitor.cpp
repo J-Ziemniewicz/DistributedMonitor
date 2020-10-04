@@ -50,28 +50,29 @@ void Monitor::_broadcastMessage(MessageType messageType, std::string sharedObjec
 {
 	
 	_updateLamportClock(false, 0);
-	Message newMessage = Message(0, _port, sharedObjectId, "", messageType, _lamportClock);
+	Message newMessage = Message(0, _port, sharedObjectId, sharedObject, messageType, _lamportClock);
 
 	std::vector<int> updatedPeerSet;
-	std::set_difference(_peersPorts.begin(), _peersPorts.end(), skipPeers.begin(), skipPeers.end(), std::inserter(updatedPeerSet, updatedPeerSet.begin()));
-
+	if (skipPeers.size() < _peersPorts.size()) {
+		std::set_difference(_peersPorts.begin(), _peersPorts.end(), skipPeers.begin(), skipPeers.end(), std::inserter(updatedPeerSet, updatedPeerSet.begin()));
+	}
 	if (message_type_converter::message_type_to_string(messageType) == "REQ") {
 		_myRequests.push_back(sharedObjectId);
 		_insertMessageToReqQueque(newMessage,sharedObjectId);
 		std::cout << "Send REQ" << std::endl;
 	}
 	
-	
-	for (std::vector<int>::iterator it = updatedPeerSet.begin(); it != updatedPeerSet.end(); ++it) { // send the messages to all other peers
-		char* recvBuffer = new char[255];
-		memset(recvBuffer, 0, sizeof(recvBuffer));
-		zmq_send(_otherPeers[*it], newMessage.serialize().c_str(),1000,0);
-		std::cout << "Sending "<< message_type_converter::message_type_to_string(messageType) << " message to.. " << std::to_string(*it) << std::endl;
-		zmq_recv(_otherPeers[*it], recvBuffer, 255, 0); //Dummy recv forced by REQ-REP Model
-		std::cout << "Received ack msg..." << std::endl;
-		//Message message = Message(recvBuffer);
-		//_parseMessage(message);
+	if (updatedPeerSet.size() > 0) {
+		for (std::vector<int>::iterator it = updatedPeerSet.begin(); it != updatedPeerSet.end(); ++it) { // send the messages to all other peers
+			char* recvBuffer = new char[255];
+			memset(recvBuffer, 0, sizeof(recvBuffer));
+			zmq_send(_otherPeers[*it], newMessage.serialize().c_str(), 1000, 0);
+			std::cout << "Sending " << message_type_converter::message_type_to_string(messageType) << " message to.. " << std::to_string(*it) << std::endl;
+			zmq_recv(_otherPeers[*it], recvBuffer, 255, 0); //Dummy recv forced by REQ-REP Model
+			std::cout << "Received ack msg..." << std::endl;
+		}
 	}
+	
 }
 
 void Monitor::_receiveMessageThread()
@@ -80,7 +81,7 @@ void Monitor::_receiveMessageThread()
 	char* recvBuffer = new char[1000];
 	while (1) {
 		memset(recvBuffer, 0, 1000);
-		if (zmq_recv(_receiveSocket, recvBuffer, 1000, 0) != -1) {
+		if (zmq_recv(_receiveSocket, recvBuffer, 1000, 0) > -1) {
 			Message dummyResponse = Message(0, _port, "", "", MessageType::DUMMY, -1);
 			zmq_send(_receiveSocket, dummyResponse.serialize().c_str(), 255, 0);
 			
@@ -118,9 +119,13 @@ void Monitor::_parseMessage(Message message)
 	switch (recvMessageType) {
 	case MessageType::REQ: {
 		if (_handleReqRep(message, sharedObjectId)) {
+			char* recvBuffer = new char[255];
+			memset(recvBuffer, 0, sizeof(recvBuffer));
 			_updateLamportClock(false, 0);
 			Message resMsg = Message(0, _port, sharedObjectId, "", MessageType::RES, _lamportClock);
 			zmq_send(_otherPeers[message.getSenderPort()], resMsg.serialize().c_str(), 1000, 0);
+			
+			zmq_recv(_otherPeers[message.getSenderPort()], recvBuffer, 255, 0);
 		}
 		_insertMessageToReqQueque(message, sharedObjectId);
 		
@@ -130,8 +135,20 @@ void Monitor::_parseMessage(Message message)
 		if (std::find(_myRequests.begin(), _myRequests.end(), sharedObjectId) != _myRequests.end()) {
 			if (std::find(_replyMessagess[sharedObjectId].begin(), _replyMessagess[sharedObjectId].end(), message.getSenderPort()) == _replyMessagess[sharedObjectId].end()) {
 				_replyMessagess[sharedObjectId].push_back(message.getSenderPort());
+				if (message.getSharedObject() != "") {
+					_sharedObjectMap[sharedObjectId] = message.getSharedObject();
+				}
 			}
 		}
+		int recvPort = message.getSenderPort();
+		if (_requestQueue.count(sharedObjectId) > 0) {
+			for (std::vector<int>::size_type i = 0; i != _requestQueue.size(); i++) {
+				if (_requestQueue[sharedObjectId][i].getSenderPort() == recvPort) {
+					_requestQueue[sharedObjectId].erase(_requestQueue[sharedObjectId].begin() + i);
+				}
+			}
+		}
+
 		break; }
 	case MessageType::REMOVE: {
 		
@@ -147,6 +164,14 @@ void Monitor::_parseMessage(Message message)
 	case MessageType::UPDATE:
 	{
 		_sharedObjectMap[sharedObjectId] = message.getSharedObject();
+		int recvPort = message.getSenderPort();
+		if (_requestQueue.count(sharedObjectId) > 0) {
+			for (std::vector<int>::size_type i = 0; i != _requestQueue.size(); i++) {
+				if (_requestQueue[sharedObjectId][i].getSenderPort() == recvPort) {
+					_requestQueue[sharedObjectId].erase(_requestQueue[sharedObjectId].begin() + i);
+				}
+			}
+		}
 		break;
 	}
 	case MessageType::NOTIFY:
@@ -166,6 +191,11 @@ bool Monitor::_canAcquireCS(std::string sharedObject)
 		return true;
 	}
 	std::cout << "Received " + std::to_string(_replyMessagess[sharedObject].size()) + " replies from " + std::to_string(_otherPeers.size())<<std::endl;
+	for (int i = 0; i < _replyMessagess[sharedObject].size(); i++) {
+		std::cout << std::to_string(_replyMessagess[sharedObject][i]) << " ";
+		
+	}
+	std::cout << std::endl;
 	_mtx.unlock();
 	return false;
 }
@@ -182,6 +212,10 @@ Monitor::Monitor(int port)
 	std::string socketURL = "tcp://127.0.0.1:" + std::to_string(_port);
 	int rc = zmq_bind(_receiveSocket, socketURL.c_str());
 	assert(rc == 0);
+	
+}
+
+void Monitor::startReceivingThread() {
 	std::thread receiveThread(&Monitor::_receiveMessageThread, this);
 	receiveThread.detach();
 }
@@ -233,16 +267,18 @@ void Monitor::acquire(std::string sharedObjectId)
 	while (!_canAcquireCS(sharedObjectId)) {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
-	std::cout << "Object " << sharedObjectId << " is aquired..." << std::endl;
+	std::cout << "\nObject " << sharedObjectId << " is aquired..." << std::endl;
 }
 
 void Monitor::update(std::string sharedObjectId, std::string sharedObject) {
 	if (_sharedObjectMap.count(sharedObjectId) > 0) {
+		std::cout <<"	"<< sharedObjectId << " value before update is " << _sharedObjectMap[sharedObjectId] << std::endl;
 		_sharedObjectMap[sharedObjectId] = sharedObject;
-		std::cout << "Object " << sharedObjectId << " is updated..." << std::endl;
+		std::cout << "	Object " << sharedObjectId << " is updated..." << std::endl;
+		std::cout <<"	"<< sharedObjectId << " value after update is " << _sharedObjectMap[sharedObjectId] << std::endl;
 	}
 	else {
-		std::cout << "Object " << sharedObjectId << " is not shared object. Please add it to shared objects..." << std::endl;
+		std::cout << "	Object " << sharedObjectId << " is not shared object. Please add it to shared objects..." << std::endl;
 	}
 }
 
@@ -256,18 +292,25 @@ void Monitor::release(std::string sharedObjectId)
 	_requestQueue[sharedObjectId].erase(_requestQueue[sharedObjectId].begin()); //usuwanie pierwszego elementu z kolejki REQ do wspoldzielonego obiektu
 	std::vector<int> skipPeers = std::vector<int>();
 	_updateLamportClock(false, 0);
-	if (_requestQueue[sharedObjectId].size()>0) {
-		int nextPeerInQueue = _requestQueue[sharedObjectId].front().getSenderPort();
-		skipPeers.push_back(nextPeerInQueue);
-		Message replyMessage = Message(0, _port, sharedObjectId, _sharedObjectMap[sharedObjectId], MessageType::RES, _lamportClock);
-		zmq_send(_otherPeers[nextPeerInQueue], replyMessage.serialize().c_str(), 1000, 0);
+	if (_requestQueue[sharedObjectId].size() > 0) {
+		for (std::vector<Message>::iterator it = _requestQueue[sharedObjectId].begin(); it != _requestQueue[sharedObjectId].end(); ++it) {
+			int nextPeerInQueue = it->getSenderPort();
+			skipPeers.push_back(nextPeerInQueue);
+			char* recvBuffer = new char[255];
+			memset(recvBuffer, 0, sizeof(recvBuffer));
+			Message replyMessage = Message(0, _port, sharedObjectId, _sharedObjectMap[sharedObjectId], MessageType::RES, _lamportClock);
+
+			zmq_send(_otherPeers[nextPeerInQueue], replyMessage.serialize().c_str(), 1000, 0);
+			zmq_recv(_otherPeers[nextPeerInQueue], recvBuffer, 255, 0);
+		}
 	}
 	// broadcast shared object updated value
 	_broadcastMessage(MessageType::UPDATE, sharedObjectId, _sharedObjectMap[sharedObjectId], skipPeers);
-	_requestQueue[sharedObjectId].clear();
+	//_requestQueue[sharedObjectId].clear();
 	_replyMessagess[sharedObjectId].clear();
 	std::cout << "Object " << sharedObjectId << " is released..." << std::endl;
 	_mtx.unlock();
+
 
 }
 
