@@ -11,8 +11,8 @@ public:
 	
 
 	Monitor(int port);
-	void startReceivingThread();
 	~Monitor();
+	void startReceivingThread();
 
 
 	void addPeer(int port);

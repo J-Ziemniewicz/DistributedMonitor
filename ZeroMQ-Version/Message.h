@@ -8,8 +8,6 @@ enum class MessageType {REQ, RES, REMOVE, NOTIFY, UPDATE, DUMMY};
 class Message
 {
 private:
-	//mozna by zaimplementowac id programu
-	int _messageId;
 	long _timeStamp;
 	int _senderPort;
 	std::string _sharedObjectId;
@@ -21,18 +19,14 @@ public:
 	
 
 	Message(char* recievedMessage);
-	Message(int messageId, int senderPort, std::string sharedObjectId, std::string sharedObject, MessageType messageType, long timeStamp);
+	Message(int senderPort, std::string sharedObjectId, std::string sharedObject, MessageType messageType, long timeStamp);
 
 	MessageType getMessageType();
 	long getMessageTimeStamp();
 	int getSenderPort();
 	std::string getSharedObjectId();
 	std::string getSharedObject();
-	int getMessageId();
-	
-
 	std::string serialize();
-	std::string print_message();
 
 
 
