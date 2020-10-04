@@ -3,7 +3,7 @@
 #include <vector>
 #include <sstream>
 
-enum class MessageType {REQ, RES, REMOVE, NOTIFY, TEST, UPDATE, DUMMY};
+enum class MessageType {REQ, RES, REMOVE, NOTIFY, UPDATE, DUMMY};
 
 class Message
 {
@@ -30,13 +30,6 @@ public:
 	std::string getSharedObject();
 	int getMessageId();
 	
-	//do usuniecia
-	bool isReq();
-	bool isRes();
-	bool isRemove();
-	bool isNotify();
-	bool isTest();
-	//
 
 	std::string serialize();
 	std::string print_message();

@@ -44,6 +44,7 @@ private:
 	long _getLamportClock();
 	void _broadcastMessage(MessageType messageType,std::string sharedObjectId, std::string sharedObject, std::vector<int> skipPeers);
 	void _receiveMessageThread();
+	bool _handleReqRep(Message message, std::string sharedObject);
 	void _parseMessage(Message message);
 	bool _canAcquireCS(std::string sharedObject);
 

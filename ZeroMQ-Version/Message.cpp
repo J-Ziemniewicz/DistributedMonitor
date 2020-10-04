@@ -75,28 +75,4 @@ int Message::getMessageId()
 	return _messageId;
 }
 
-bool Message::isReq()
-{
-	return Message::_messageType == MessageType::REQ;
 
-}
-
-bool Message::isRes()
-{
-	return Message::_messageType == MessageType::RES;
-}
-
-bool Message::isRemove()
-{
-	return Message::_messageType == MessageType::REMOVE;
-}
-
-bool Message::isNotify()
-{
-	return Message::_messageType == MessageType::NOTIFY;
-}
-
-bool Message::isTest()
-{
-	return Message::_messageType == MessageType::TEST;
-}
